@@ -13,26 +13,12 @@ from pyspark.sql import Row
 def transform(spark, s3_input_data,s3_output_train_data):
     print('Processing {} => {}'.format(s3_input_data, s3_output_train_data))
 
-    # to read all data in a single dataframe:
-    # customSchema = StructType([
-    #     StructField("income", IntegerType(), True)
-    # ])
-
-    # df_csv = spark.read.csv(path=s3_input_data,
-    #                             sep='\t',
-    #                             schema=customSchema,
-    #                             header=True,
-    #                             quote=None)
-    # df_csv.show()
-
-    rdd = spark.sparkContext.wholeTextFiles(s3_input_data)
+    rdd = spark.sparkContext.wholeTextFiles(s3_input_data, 9)
     sum_rdd = rdd.map(lambda x: sum(int(y) for y in x[1].split("\n")))
 
-    row = Row("val")
+    row = Row("sum")
     df = sum_rdd.map(row).toDF()  
     df.show()
-    
-    #train_df.write.option("header",True).csv("/opt/ml/processing/output/train").save(path=s3_output_train_data)
 
     print('Saving to output file {}'.format(s3_output_train_data))
     df.write.format('csv').option('header','true').save(f'{s3_output_train_data}/output.csv',mode='overwrite')
@@ -44,11 +30,10 @@ def transform(spark, s3_input_data,s3_output_train_data):
 def main():
     spark = SparkSession.builder.appName("pyspark-demo").getOrCreate()
 
-    # Convert command line args into a map of args
     args_iter = iter(sys.argv[1:])
     args = dict(zip(args_iter, args_iter))
     print(args.keys())
-    # Retrieve the args and replace 's3://' with 's3a://' (used by Spark)
+    # Retrieve the args and replace 's3://' with 's3a://'
     s3_input_data = args['s3_input_data'].replace('s3://', 's3a://')
     print(s3_input_data)
 
