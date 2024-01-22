@@ -1,8 +1,6 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import argparse
-import os
 import sys
 
 from pyspark.sql import SparkSession
@@ -10,10 +8,12 @@ from pyspark.sql.functions import sum as _sum
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType
 from pyspark import SparkConf
 from pyspark.sql import SparkSession
+from pyspark.sql import Row
 
 def transform(spark, s3_input_data,s3_output_train_data):
     print('Processing {} => {}'.format(s3_input_data, s3_output_train_data))
 
+    # to read all data in a single dataframe:
     # customSchema = StructType([
     #     StructField("income", IntegerType(), True)
     # ])
@@ -25,16 +25,15 @@ def transform(spark, s3_input_data,s3_output_train_data):
     #                             quote=None)
     # df_csv.show()
 
-    rdd = spark.sparkContext.wholeTextFiles("s3_input_data")
+    rdd = spark.sparkContext.wholeTextFiles(s3_input_data)
     sum_rdd = rdd.map(lambda x: sum(int(y) for y in x[1].split("\n")))
 
-    row = Row("val") # Or some other column name
+    row = Row("val")
     df = sum_rdd.map(row).toDF()  
     df.show()
     
     #train_df.write.option("header",True).csv("/opt/ml/processing/output/train").save(path=s3_output_train_data)
-    #train_df.write.format('csv').save(path=s3_output_train_data)
-    
+
     print('Saving to output file {}'.format(s3_output_train_data))
     df.write.format('csv').option('header','true').save(f'{s3_output_train_data}/output.csv',mode='overwrite')
 
